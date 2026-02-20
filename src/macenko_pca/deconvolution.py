@@ -56,7 +56,7 @@ try:
         py_separate_stains_macenko_pca_f32,
         py_separate_stains_macenko_pca_f64,
     )
-except Exception as exc:  # pragma: no cover - fallback for developer machines / CI without built extension
+except Exception as exc:
     # Provide informative stubs so importing the Python package doesn't
     # immediately fail in environments where the compiled Rust extension
     # is not present. Each stub raises a RuntimeError with actionable
