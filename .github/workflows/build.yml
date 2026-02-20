@@ -82,8 +82,6 @@ jobs:
       - name: Build wheels (Windows)
         if: runner.os == 'Windows'
         uses: PyO3/maturin-action@v1
-        env:
-          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
         with:
           args: --release --out dist
           sccache: "true"
