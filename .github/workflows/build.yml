@@ -55,21 +55,31 @@ jobs:
           args: --release --out dist
           sccache: "true"
 
+      - name: Bootstrap vcpkg and set VCPKG_ROOT and update PATH
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vcpkg = Join-Path $env:RUNNER_TEMP 'vcpkg'
+          if (-Not (Test-Path $vcpkg)) {
+            git clone https://github.com/microsoft/vcpkg.git $vcpkg
+            & "$vcpkg\bootstrap-vcpkg.bat"
+            & "$vcpkg\vcpkg.exe" install openblas:x64-windows openssl:x64-windows pkgconfig
+            & "$vcpkg\vcpkg.exe" integrate install
+          }
+          # Export VCPKG_ROOT for later steps and add vcpkg's installed bin dir to PATH.
+          $bin = Join-Path $vcpkg 'installed\x64-windows\bin'
+          Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=$vcpkg"
+          # Prepend vcpkg's bin to PATH so Windows build tools can discover libraries/executables.
+          Add-Content -Path $env:GITHUB_ENV -Value ("PATH=$bin;$env:PATH")
+
       - name: Build wheels (Windows)
         if: runner.os == 'Windows'
         uses: PyO3/maturin-action@v1
         env:
-          # Use runner temporary directory for vcpkg bootstrap
-          VCPKG_ROOT: ${{ runner.temp }}/vcpkg
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
         with:
           args: --release --out dist
           sccache: "true"
-          before-script-windows: |
-            REM Bootstrap vcpkg and install OpenBLAS on Windows runners.
-            powershell -Command "if (-Not (Test-Path -Path $env:VCPKG_ROOT)) { git clone https://github.com/microsoft/vcpkg.git $env:VCPKG_ROOT; & $env:VCPKG_ROOT\\bootstrap-vcpkg.bat }"
-            powershell -Command "& $env:VCPKG_ROOT\\vcpkg.exe install openblas:x64-windows && & $env:VCPKG_ROOT\\vcpkg.exe integrate install"
-            REM Expose VCPKG_ROOT for the build step
-            setx VCPKG_ROOT "%VCPKG_ROOT%"
 
       - name: Upload wheel artifacts
         uses: actions/upload-artifact@v4
