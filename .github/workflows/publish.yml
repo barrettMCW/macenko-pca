@@ -79,31 +79,16 @@ jobs:
             yum install -y openblas-devel openssl-devel pkgconfig || \
             (apt-get update && apt-get install -y libopenblas-dev libssl-dev pkg-config) || true
 
+      - name: Install macOS system deps
+        if: runner.os == 'macOS'
+        run: brew install openblas pkg-config openssl
+
       - name: Build wheels (macOS)
         if: runner.os == 'macOS'
         uses: PyO3/maturin-action@v1
         env:
           # Help pkg-config find Homebrew's openblas and openssl on both Intel and ARM runners
           PKG_CONFIG_PATH: /opt/homebrew/opt/openblas/lib/pkgconfig:/usr/local/opt/openblas/lib/pkgconfig:/opt/homebrew/opt/openssl/lib/pkgconfig:/usr/local/opt/openssl/lib/pkgconfig
-        with:
-          args: --release --out dist
-          sccache: "true"
-
-      - name: Install macOS system deps
-        if: runner.os == 'macOS'
-        run: brew install openblas pkg-config openssl
-
-      - name: Install Windows vcpkg and build deps
-        if: runner.os == 'Windows'
-        run: |
-          echo "Windows builds are intentionally omitted from this publish workflow."
-        shell: cmd
-
-      - name: Build wheels (Windows)
-        if: runner.os == 'Windows'
-        uses: PyO3/maturin-action@v1
-        env:
-          VCPKG_ROOT: C:\vcpkg
         with:
           args: --release --out dist
           sccache: "true"
