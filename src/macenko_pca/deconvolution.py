@@ -45,6 +45,8 @@ try:
     from macenko_pca._rust import (
         py_color_deconvolution_f32,
         py_color_deconvolution_f64,
+        py_normalize_f32,
+        py_normalize_f64,
         py_reconstruct_rgb_f32,
         py_reconstruct_rgb_f64,
         py_rgb_color_deconvolution_f32,
@@ -83,6 +85,8 @@ except Exception as exc:
 
     py_color_deconvolution_f32 = _missing_stub("py_color_deconvolution_f32")
     py_color_deconvolution_f64 = _missing_stub("py_color_deconvolution_f64")
+    py_normalize_f32 = _missing_stub("py_normalize_f32")
+    py_normalize_f64 = _missing_stub("py_normalize_f64")
     py_reconstruct_rgb_f32 = _missing_stub("py_reconstruct_rgb_f32")
     py_reconstruct_rgb_f64 = _missing_stub("py_reconstruct_rgb_f64")
     py_rgb_color_deconvolution_f32 = _missing_stub("py_rgb_color_deconvolution_f32")
@@ -102,8 +106,106 @@ except Exception as exc:
         "py_separate_stains_macenko_pca_f64"
     )
 
+# The normalize functions are expected to be provided by the compiled Rust
+# extension. Importing them is handled above in the main import block. If
+# the extension is not present, the names above will be the missing-stub
+# callables created in the except block above, which raise informative
+# RuntimeErrors when invoked. No Python fallback is supplied here; rebuild
+# the Rust extension to provide these symbols.
+
 # Type alias for the supported return types.
 _FloatArray = Union[NDArray[np.float32], NDArray[np.float64]]
+
+# ---------------------------------------------------------------------------
+# Well-known stain colour vectors
+# ---------------------------------------------------------------------------
+
+#: Mapping of common histology stain names to their reference colour vectors
+#: in SDA (stain-density-absorbance) space.  Each value is a 3-element list
+#: representing the unit-direction of that stain.  The ``'null'`` entry is
+#: a zero vector used as a placeholder when no stain is present.
+#:
+#: These vectors originate from the HistomicsTK project and are widely used
+#: as reference directions when identifying which column of an adaptively
+#: estimated stain matrix corresponds to a particular biological stain.
+stain_color_map: dict[str, list[float]] = {
+    "hematoxylin": [0.65, 0.70, 0.29],
+    "eosin": [0.07, 0.99, 0.11],
+    "dab": [0.27, 0.57, 0.78],
+    "null": [0.0, 0.0, 0.0],
+}
+
+
+def normalize(a: ArrayLike) -> NDArray[np.float64]:
+    """Normalize an array to unit norm using the Rust backend.
+
+    For a 1-D array the vector is divided by its L2 norm. For a 2-D array
+    each column is independently normalised. Zero-norm vectors / columns
+    are left as zeros.
+
+    This function assumes the compiled Rust extension exposes
+    `py_normalize_f64` (registered above). If the extension is missing,
+    the previously-installed import-time stub will raise an informative
+    RuntimeError explaining how to rebuild/install the extension.
+    """
+    a = np.asarray(a, dtype=np.float64)
+    if a.ndim == 1:
+        # reshape to (N, 1) and call the Rust normalizer which expects 2-D input
+        col = np.ascontiguousarray(a.reshape(-1, 1))
+        result = np.asarray(py_normalize_f64(col))
+        return result.ravel()
+    # 2-D: delegate directly to Rust
+    return np.asarray(py_normalize_f64(np.ascontiguousarray(a)))
+
+
+def find_stain_index(
+    reference: ArrayLike,
+    w: ArrayLike,
+) -> int:
+    """Identify the column of *w* that best aligns with *reference*.
+
+    This is used with adaptive deconvolution routines where the order of
+    returned stain vectors is not guaranteed.  The function identifies the
+    stain vector (column) of *w* whose direction most closely matches the
+    provided *reference* direction.
+
+    Vectors are normalised to unit length before comparison so alignment
+    is measured purely by angle (cosine similarity), not magnitude.
+
+    :param reference: 1-D array (length 3) representing the query stain
+        vector.  Typically one of the values from :data:`stain_color_map`.
+    :type reference: ArrayLike
+    :param w: A ``(3, N)`` array whose columns are stain vectors to search.
+        Usually a ``(3, 3)`` stain matrix returned by
+        :func:`rgb_separate_stains_macenko_pca`.
+    :type w: ArrayLike
+    :return: Column index of the stain vector in *w* with the best
+        alignment to *reference*.
+    :rtype: int
+
+    Notes
+    -----
+    Alignment is determined by the absolute value of the dot product between
+    unit vectors so that anti-parallel vectors (pointing in exactly opposite
+    directions) are treated as equivalent.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from macenko_pca import find_stain_index, stain_color_map
+    >>> w = np.eye(3)
+    >>> find_stain_index(stain_color_map["hematoxylin"], w)
+    1
+
+    See Also
+    --------
+    stain_color_map : Well-known reference stain vectors.
+    rgb_separate_stains_macenko_pca : Estimate stain matrix from an RGB image.
+    """
+    reference = np.asarray(reference, dtype=np.float64)
+    w = np.asarray(w, dtype=np.float64)
+    dot_products = np.dot(normalize(reference), normalize(w))
+    return int(np.argmax(np.abs(dot_products)))
 
 
 def _resolve_dtype(arr: np.ndarray) -> np.ndarray:

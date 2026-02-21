@@ -22,6 +22,8 @@ from typing import Any, Callable
 __all__ = [
     "py_color_deconvolution_f32",
     "py_color_deconvolution_f64",
+    "py_normalize_f32",
+    "py_normalize_f64",
     "py_reconstruct_rgb_f32",
     "py_reconstruct_rgb_f64",
     "py_rgb_color_deconvolution_f32",
@@ -60,6 +62,8 @@ def _unavailable(name: str) -> Callable[..., Any]:
 # and attribute access in the Python wrappers succeed at import time.
 py_color_deconvolution_f32 = _unavailable("py_color_deconvolution_f32")
 py_color_deconvolution_f64 = _unavailable("py_color_deconvolution_f64")
+py_normalize_f32 = _unavailable("py_normalize_f32")
+py_normalize_f64 = _unavailable("py_normalize_f64")
 py_reconstruct_rgb_f32 = _unavailable("py_reconstruct_rgb_f32")
 py_reconstruct_rgb_f64 = _unavailable("py_reconstruct_rgb_f64")
 py_rgb_color_deconvolution_f32 = _unavailable("py_rgb_color_deconvolution_f32")

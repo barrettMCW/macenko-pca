@@ -36,19 +36,25 @@ Example::
 from macenko_pca.__about__ import __version__
 from macenko_pca.deconvolution import (
     color_deconvolution,
+    find_stain_index,
+    normalize,
     reconstruct_rgb,
     rgb_color_deconvolution,
     rgb_separate_stains_macenko_pca,
     rgb_to_sda,
     separate_stains_macenko_pca,
+    stain_color_map,
 )
 
 __all__ = [
     "__version__",
     "color_deconvolution",
+    "find_stain_index",
+    "normalize",
     "reconstruct_rgb",
     "rgb_color_deconvolution",
     "rgb_separate_stains_macenko_pca",
     "rgb_to_sda",
     "separate_stains_macenko_pca",
+    "stain_color_map",
 ]

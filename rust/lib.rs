@@ -172,6 +172,16 @@ macro_rules! define_typed_pyfunctions {
             Ok(result.into_pyarray(py))
         }
 
+        #[pyfunction]
+        fn [<py_normalize_ $suffix>]<'py>(
+            py: Python<'py>,
+            m: PyReadonlyArray2<'py, $f>,
+        ) -> PyResult<pyo3::Bound<'py, PyArray2<$f>>> {
+            let arr = m.as_array().to_owned();
+            let result = linalg::normalize(&arr);
+            Ok(result.into_pyarray(py))
+        }
+
         } // paste!
     };
 }
@@ -195,6 +205,7 @@ fn _rust(_py: Python, m: pyo3::Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_color_deconvolution_f64, &m)?)?;
     m.add_function(wrap_pyfunction!(py_rgb_color_deconvolution_f64, &m)?)?;
     m.add_function(wrap_pyfunction!(py_reconstruct_rgb_f64, &m)?)?;
+    m.add_function(wrap_pyfunction!(py_normalize_f64, &m)?)?;
     // f32
     m.add_function(wrap_pyfunction!(
         py_rgb_separate_stains_macenko_pca_f32,
@@ -205,5 +216,6 @@ fn _rust(_py: Python, m: pyo3::Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_color_deconvolution_f32, &m)?)?;
     m.add_function(wrap_pyfunction!(py_rgb_color_deconvolution_f32, &m)?)?;
     m.add_function(wrap_pyfunction!(py_reconstruct_rgb_f32, &m)?)?;
+    m.add_function(wrap_pyfunction!(py_normalize_f32, &m)?)?;
     Ok(())
 }
